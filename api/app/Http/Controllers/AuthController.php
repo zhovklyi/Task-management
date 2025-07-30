@@ -20,20 +20,31 @@ class AuthController extends Controller
             'password' => Hash::make($request->input('password')),
         ]);
 
-        Auth::login($user);
+        $token = $user->createToken('auth-token')->plainTextToken;
 
-        return response()->json($user, Response::HTTP_OK);
+        return response()->json([
+            'user' => $user,
+            'token' => $token,
+            'message' => 'User registered successfully'
+        ], Response::HTTP_CREATED);
     }
 
     public function login(LoginRequest $request)
     {
         if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json(['message' => 'Invalid credentials'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['message' => 'Invalid credentials'], Response::HTTP_UNAUTHORIZED);
         }
 
-        $request->session()->regenerate();
+        /** @var User $user */
+        $user = Auth::user();
 
-        return response()->json($request->user(), Response::HTTP_OK);
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return response()->json([
+            'user' => $user,
+            'token' => $token,
+            'message' => 'Logged in successfully'
+        ], Response::HTTP_OK);
     }
 
     public function user(Request $request)
@@ -43,11 +54,8 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        $request->user()->currentAccessToken()->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return response()->json(['message' => 'Logged out'], Response::HTTP_OK);
+        return response()->json(['message' => 'Logged out successfully'], Response::HTTP_OK);
     }
 }
